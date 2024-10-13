@@ -36,14 +36,6 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientsFilter
 
-    # def get_queryset(self):
-    #     name = self.request.query_params.get('name')
-    #     if name is not None:
-    #         return Ingredient.objects.filter(
-    #             name__iregex='^'+name
-    #         )
-    #     return Ingredient.objects.all()
-
 
 class RecipesViewSet(viewsets.ModelViewSet):
     """Вьюсет рецетов."""

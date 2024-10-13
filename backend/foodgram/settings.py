@@ -6,13 +6,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-%4--7!hv$xf)9aomq^t$e^-0+n!84fg+9m@l-%h&(wu)&^64#-'
+SECRET_KEY = os.getenv('SECRET_KEY', 'secret_key')
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', False)
 
-ALLOWED_HOSTS = [
-    '51.250.23.169', 'fooooodgram.ddns.net', 'localhost', '127.0.0.1:8000'
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1, localhost').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
