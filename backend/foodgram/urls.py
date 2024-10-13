@@ -1,4 +1,4 @@
-"""foodgram URL Configuration"""
+"""foodgram URL Configuration."""
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -9,7 +9,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
     path('api/', include('recipes.urls')),
-    re_path(r'^s/', include('django_short_url.urls', namespace='django_short_url')),
+    re_path(r'^s/', include(
+        'django_short_url.urls',
+        namespace='django_short_url'
+    )),
 ]
 
 if settings.DEBUG:

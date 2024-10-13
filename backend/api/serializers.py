@@ -2,10 +2,8 @@ import base64
 
 from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
-
 from rest_framework import serializers
 
-from .constants import RECIPIES_LIMIT_DEFAULT
 from recipes.models import (
     FavoriteRecipe, Ingredient,
     Recipe, RecipeIngredients,
@@ -13,8 +11,12 @@ from recipes.models import (
 )
 from users.models import User, Follow
 
+from .constants import RECIPIES_LIMIT_DEFAULT
+
 
 class Base64ImageField(serializers.ImageField):
+    """Сериалайзер изображений."""
+
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
             format, imgstr = data.split(';base64,')
@@ -24,6 +26,8 @@ class Base64ImageField(serializers.ImageField):
 
 
 class AvatarSerializer(serializers.ModelSerializer):
+    """Сериалайзер аватарки."""
+
     avatar = Base64ImageField(allow_null=True)
 
     class Meta:
@@ -32,6 +36,8 @@ class AvatarSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(UserSerializer):
+    """Сериалайзер пользователя."""
+
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
@@ -57,6 +63,7 @@ class CustomUserSerializer(UserSerializer):
 
 
 class TagSerializer(serializers.ModelSerializer):
+    """Сериалайзер тегов."""
 
     class Meta:
         model = Tag
@@ -64,6 +71,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class IngredientSerializer(serializers.ModelSerializer):
+    """Сериалайзер ингредиентов."""
 
     class Meta:
         model = Ingredient
@@ -71,6 +79,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class IngredientForRecipeSerializer(serializers.ModelSerializer):
+    """Сериалайзер игредиентов для рецептов."""
 
     id = serializers.IntegerField(source='ingredient.id')
     name = serializers.CharField(source='ingredient.name')
@@ -84,6 +93,7 @@ class IngredientForRecipeSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
+    """Сериалайзер рецептов."""
 
     author = CustomUserSerializer()
     ingredients = IngredientForRecipeSerializer(
@@ -117,16 +127,17 @@ class RecipeSerializer(serializers.ModelSerializer):
                 user=self.context['request'].user, recipe=obj
             ).exists()
         return False
-        
 
     def get_is_favorited(self, obj):
         return self.check_recipe(obj, FavoriteRecipe)
-    
+
     def get_is_in_shopping_cart(self, obj):
         return self.check_recipe(obj, ShoppingCartRecipe)
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
+    """Сериалайзер ингредиента для рецепта."""
+
     id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
     amount = serializers.FloatField()
 
@@ -136,6 +147,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class CreateRecipeSerializer(serializers.ModelSerializer):
+    """Сериалайзер для создания рецептов."""
 
     ingredients = RecipeIngredientSerializer(
         many=True, source='recipe_ingredients'
@@ -162,7 +174,7 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
         recipe.save()
-        
+
         for recipe_ingredient in recipe_ingredients:
             ingredient = recipe_ingredient['id']
             amount = recipe_ingredient['amount']
@@ -192,6 +204,8 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
+    """Сериалайзер для добавления в избранное."""
+
     image = Base64ImageField()
 
     class Meta:
@@ -200,6 +214,8 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
 
 class FollowingSerializer(CustomUserSerializer):
+    """Сериалайзер подписок."""
+
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
@@ -230,7 +246,6 @@ class FollowingSerializer(CustomUserSerializer):
             user.recipes.all()[:recipies_limit],
             many=True
         ).data
-        
 
     def get_recipes_count(self, user):
         return user.recipes.count()

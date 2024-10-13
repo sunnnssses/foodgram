@@ -22,28 +22,31 @@ from api.pagintation import CustomPagination
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    """Вьюсет тегов."""
+
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
+    """Вьюсет ингредиентов."""
 
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    # будет работать в Postgre
-    # filter_backends = (DjangoFilterBackend,)
-    # filterset_class = IngredientsFilter
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientsFilter
 
-    def get_queryset(self):
-        name = self.request.query_params.get('name')
-        if name is not None:
-            return Ingredient.objects.filter(
-                name__iregex='^'+name
-            )
-        return Ingredient.objects.all()
+    # def get_queryset(self):
+    #     name = self.request.query_params.get('name')
+    #     if name is not None:
+    #         return Ingredient.objects.filter(
+    #             name__iregex='^'+name
+    #         )
+    #     return Ingredient.objects.all()
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
+    """Вьюсет рецетов."""
 
     queryset = Recipe.objects.all()
     pagination_class = CustomPagination
@@ -111,7 +114,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
                 )
             )
         }, status=status.HTTP_200_OK)
-    
+
     @action(
         methods=['get'],
         detail=False,

@@ -15,6 +15,8 @@ from .models import Follow, User
 
 
 class CustomUserViewSet(UserViewSet):
+    """Вьюсет для работы с пользователями."""
+
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
     pagination_class = CustomPagination
@@ -73,7 +75,7 @@ class CustomUserViewSet(UserViewSet):
                 context={'request': request}
             ).data
         )
-    
+
     @action(
         methods=['post', 'delete'],
         detail=True,

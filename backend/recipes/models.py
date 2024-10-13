@@ -5,6 +5,8 @@ User = get_user_model()
 
 
 class Tag(models.Model):
+    """Модель тегов."""
+
     name = models.CharField(max_length=256, verbose_name='Название')
     slug = models.SlugField(max_length=64, unique=True, verbose_name='Слаг')
 
@@ -17,6 +19,8 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
+    """Модель ингредиентов."""
+
     name = models.CharField(max_length=256, verbose_name='Название')
     measurement_unit = models.CharField(
         max_length=50,
@@ -39,6 +43,8 @@ class Ingredient(models.Model):
 
 
 class Recipe(models.Model):
+    """Модель рецептов."""
+
     pub_date = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Добавлено'
@@ -72,6 +78,8 @@ class Recipe(models.Model):
 
 
 class RecipeIngredients(models.Model):
+    """Модель ингредиентов для рецептов."""
+
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
@@ -99,6 +107,8 @@ class RecipeIngredients(models.Model):
 
 
 class FavoriteRecipe(models.Model):
+    """Модель избранного."""
+
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
@@ -125,6 +135,8 @@ class FavoriteRecipe(models.Model):
 
 
 class ShoppingCartRecipe(models.Model):
+    """Модель корзины."""
+
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
