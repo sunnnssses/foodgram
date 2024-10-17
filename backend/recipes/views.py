@@ -41,14 +41,15 @@ class RecipesViewSet(viewsets.ModelViewSet):
     """Вьюсет рецетов."""
 
     queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
     pagination_class = CustomPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipesFilter
 
-    def get_serializer_class(self):
-        if self.action in ('list', 'retrieve'):
-            return RecipeSerializer
-        return CreateRecipeSerializer
+    # def get_serializer_class(self):
+    #     if self.action in ('list', 'retrieve'):
+    #         return RecipeSerializer
+    #     return CreateRecipeSerializer
 
     def perform_create(self, serializer):
         user = self.request.user
