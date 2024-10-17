@@ -15,7 +15,7 @@ from .models import (
     Tag, ShoppingCartRecipe
 )
 from api.serializers import (
-    CreateRecipeSerializer, FavoriteSerializer,
+    FavoriteSerializer,
     IngredientSerializer, RecipeSerializer, TagSerializer
 )
 from api.pagintation import CustomPagination
