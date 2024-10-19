@@ -11,14 +11,14 @@ admin.site.register(FavoriteRecipe)
 class IngredientAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     search_help_text = 'Поиск по названию'
-    filter_horizontal = ('tags',)
-    list_filter = ('tags',)
 
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'author__username')
     search_help_text = 'Поиск по названию и автору'
+    filter_horizontal = ('tags',)
+    list_filter = ('tags',)
 
     @admin.display(description='Число добавления в избранное')
     def in_favorites(self, obj):
