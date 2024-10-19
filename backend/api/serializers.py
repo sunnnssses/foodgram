@@ -134,6 +134,40 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_in_shopping_cart(self, obj):
         return self.check_recipe(obj, ShoppingCartRecipe)
 
+    def create(self, validated_data):
+        recipe_ingredients = validated_data.pop('recipe_ingredients')
+        tags = validated_data.pop('tags')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        recipe.save()
+
+        for recipe_ingredient in recipe_ingredients:
+            ingredient = recipe_ingredient['id']
+            amount = recipe_ingredient['amount']
+            RecipeIngredients.objects.create(
+                recipe=recipe,
+                ingredient=ingredient,
+                amount=amount
+            )
+        return recipe
+
+    def update(self, instance, validated_data):
+        recipe_ingredients = validated_data.pop('recipe_ingredients')
+        tags = validated_data.pop('tags')
+        instance.tags.clear()
+        instance.tags.set(tags)
+        instance.ingredients.clear()
+
+        for recipe_ingredient in recipe_ingredients:
+            ingredient = recipe_ingredient['id']
+            amount = recipe_ingredient['amount']
+            RecipeIngredients.objects.create(
+                recipe=instance,
+                ingredient=ingredient,
+                amount=amount
+            )
+        return super().update(instance, validated_data)
+
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     """Сериалайзер ингредиента для рецепта."""
@@ -172,6 +206,7 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
+    # перенести в сериализатор выше
     def create(self, validated_data):
         recipe_ingredients = validated_data.pop('recipe_ingredients')
         tags = validated_data.pop('tags')
