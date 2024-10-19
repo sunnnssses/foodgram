@@ -15,7 +15,7 @@ from .models import (
     Tag, ShoppingCartRecipe
 )
 from api.serializers import (
-    FavoriteSerializer,
+    CreateRecipeSerializer, FavoriteSerializer,
     IngredientSerializer, RecipeSerializer, TagSerializer
 )
 from api.pagintation import CustomPagination
@@ -46,10 +46,10 @@ class RecipesViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipesFilter
 
-    # def get_serializer_class(self):
-    #     if self.action in ('list', 'retrieve'):
-    #         return RecipeSerializer
-    #     return CreateRecipeSerializer
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return RecipeSerializer
+        return CreateRecipeSerializer
 
     def perform_create(self, serializer):
         user = self.request.user
