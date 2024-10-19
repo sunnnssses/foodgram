@@ -40,6 +40,7 @@ sudo docker compose -f docker-compose.production.yml exec backend cp -r /app/col
 - DB_PORT=5432
 - SECRET_KEY = 'secret_key'
 - ALLOWED_HOSTS = '00.123.45.678'
+- CSRF_TRUSTED_ORIGINS = 'https://*.ddns.net'
 - DEBUG = False
 
 ##### Автор: sunnnssses
