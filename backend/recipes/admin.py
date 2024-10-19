@@ -19,6 +19,7 @@ class RecipeAdmin(admin.ModelAdmin):
     search_help_text = 'Поиск по названию и автору'
     filter_horizontal = ('tags',)
     list_filter = ('tags',)
+    readonly_fields = ('in_favorites',)
 
     @admin.display(description='Число добавления в избранное')
     def in_favorites(self, obj):
