@@ -3,13 +3,15 @@ from rest_framework import routers
 
 from . import views
 
-app_name = 'recipes'
+app_name = 'api'
 
 router = routers.DefaultRouter()
 router.register('tags', views.TagViewSet, basename='tag')
 router.register('ingredients', views.IngredientViewSet, basename='ingredient')
 router.register('recipes', views.RecipesViewSet, basename='recipe')
+router.register('users', views.FoodgramUserViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('auth/', include('djoser.urls.authtoken')),
 ]

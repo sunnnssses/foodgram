@@ -2,9 +2,19 @@ from django.contrib import admin
 
 from .models import FavoriteRecipe, Ingredient, Recipe, RecipeIngredients, Tag
 
-admin.site.register(Tag)
-admin.site.register(RecipeIngredients)
-admin.site.register(FavoriteRecipe)
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(RecipeIngredients)
+class RecipeAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(FavoriteRecipe)
+class FavouriteAdmin(admin.ModelAdmin):
+    pass
 
 
 @admin.register(Ingredient)
@@ -18,9 +28,9 @@ class RecipeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'author__username')
     search_help_text = 'Поиск по названию и автору'
     filter_horizontal = ('tags',)
-    list_filter = ('tags',)
+    list_filter = ('tags', 'author__username')
     readonly_fields = ('in_favorites',)
 
     @admin.display(description='Число добавления в избранное')
-    def in_favorites(self, obj):
-        return FavoriteRecipe.objects.filter(recipe=obj).count()
+    def in_favorites(self, recipe):
+        return FavoriteRecipe.objects.filter(recipe=recipe).count()

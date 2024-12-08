@@ -1,7 +1,5 @@
-import base64
-
-from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
 from recipes.models import (
@@ -14,17 +12,6 @@ from users.models import User, Follow
 from .constants import RECIPIES_LIMIT_DEFAULT
 
 
-class Base64ImageField(serializers.ImageField):
-    """Сериалайзер изображений."""
-
-    def to_internal_value(self, data):
-        if isinstance(data, str) and data.startswith('data:image'):
-            format, imgstr = data.split(';base64,')
-            ext = format.split('/')[-1]
-            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
-        return super().to_internal_value(data)
-
-
 class AvatarSerializer(serializers.ModelSerializer):
     """Сериалайзер аватарки."""
 
@@ -35,7 +22,7 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ('avatar',)
 
 
-class CustomUserSerializer(UserSerializer):
+class FoodgramUserSerializer(UserSerializer):
     """Сериалайзер пользователя."""
 
     is_subscribed = serializers.SerializerMethodField()
@@ -57,7 +44,7 @@ class CustomUserSerializer(UserSerializer):
             self.context['request'].user.is_authenticated
         ):
             return Follow.objects.filter(
-                user=self.context['request'].user, following=user
+                user=self.context['request'].user, author=user
             ).exists()
         return False
 
@@ -95,7 +82,7 @@ class IngredientForRecipeSerializer(serializers.ModelSerializer):
 class RecipeSerializer(serializers.ModelSerializer):
     """Сериалайзер рецептов."""
 
-    author = CustomUserSerializer()
+    author = FoodgramUserSerializer()
     ingredients = IngredientForRecipeSerializer(
         many=True, source='recipe_ingredients'
     )
@@ -119,20 +106,20 @@ class RecipeSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
-    def check_recipe(self, obj, recipe_model):
+    def check_recipe(self, recipe, recipe_model):
         if 'request' in self.context and (
             self.context['request'].user.is_authenticated
         ):
             return recipe_model.objects.filter(
-                user=self.context['request'].user, recipe=obj
+                user=self.context['request'].user, recipe=recipe
             ).exists()
         return False
 
-    def get_is_favorited(self, obj):
-        return self.check_recipe(obj, FavoriteRecipe)
+    def get_is_favorited(self, recipe):
+        return self.check_recipe(recipe, FavoriteRecipe)
 
-    def get_is_in_shopping_cart(self, obj):
-        return self.check_recipe(obj, ShoppingCartRecipe)
+    def get_is_in_shopping_cart(self, recipe):
+        return self.check_recipe(recipe, ShoppingCartRecipe)
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
@@ -216,11 +203,11 @@ class FavoriteSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class FollowingSerializer(CustomUserSerializer):
+class FollowingSerializer(FoodgramUserSerializer):
     """Сериалайзер подписок."""
 
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
+    recipes_count = serializers.IntegerField(source='recipes.count')
 
     class Meta:
         model = User
@@ -250,5 +237,3 @@ class FollowingSerializer(CustomUserSerializer):
             many=True
         ).data
 
-    def get_recipes_count(self, user):
-        return user.recipes.count()
