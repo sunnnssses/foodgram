@@ -236,4 +236,3 @@ class FollowingSerializer(FoodgramUserSerializer):
             user.recipes.all()[:recipies_limit],
             many=True
         ).data
-

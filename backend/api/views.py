@@ -4,7 +4,6 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from django_short_url.views import get_surl
-
 from djoser.views import UserViewSet
 
 from rest_framework import status, viewsets
@@ -21,6 +20,7 @@ from recipes.models import (
 from users.models import (
     Follow, User
 )
+
 from .filters import IngredientsFilter, RecipesFilter
 from .serializers import (
     AvatarSerializer, CreateRecipeSerializer,
@@ -125,7 +125,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
                 ).values_list('name', flat=True)
             ),
             content_type='text/plain'
-            )
+        )
 
     @action(
         methods=['post', 'delete'],
@@ -233,10 +233,9 @@ class FoodgramUserViewSet(UserViewSet):
                     f'Вы уже подписаны на пользователя {author.username}.'
                 })
         return Response(
-                FollowingSerializer(
-                    author,
-                    context={'request': request}
-                ).data,
-                status=status.HTTP_201_CREATED
-            )
-    
+            FollowingSerializer(
+                author,
+                context={'request': request}
+            ).data,
+            status=status.HTTP_201_CREATED
+        )

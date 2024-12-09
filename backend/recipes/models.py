@@ -108,7 +108,7 @@ class RecipeIngredients(models.Model):
 
     def __str__(self):
         return f'{self.ingredient} - {self.amount}'
-    
+
 
 class BaseUserRecipeModel(models.Model):
     """Базовая модель для добавления рецептов в списки."""
@@ -153,4 +153,3 @@ class ShoppingCartRecipe(BaseUserRecipeModel):
         default_related_name = 'in_shopping_cart'
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-

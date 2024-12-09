@@ -2,6 +2,7 @@ from django.utils.timezone import localtime
 
 
 def get_shopping_list(ingredients, recipes):
+    """Функция для получения списка покупок."""
     return '\n'.join([
         f'Список покупок на {localtime().date().strftime("%d/%m/%y")}',
         'Продукты:',

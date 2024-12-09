@@ -62,11 +62,11 @@ class FoodgramUserAdmin(UserAdmin):
     @admin.display(description='Количество подписчиков')
     def followers(self, user):
         return Follow.objects.filter(author=user).count()
-    
+
     @admin.display(description='Количество подписок')
     def users_following(self, user):
         return Follow.objects.filter(user=user).count()
-    
+
     @admin.display(description='Количество опубликованных рецептов')
     def recipes(self, user):
         return Recipe.objects.filter(author=user).count()
