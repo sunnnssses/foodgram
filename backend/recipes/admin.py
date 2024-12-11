@@ -9,7 +9,7 @@ class TagAdmin(admin.ModelAdmin):
 
 
 @admin.register(RecipeIngredients)
-class RecipeAdmin(admin.ModelAdmin):
+class RecipeIngredientsAdmin(admin.ModelAdmin):
     pass
 
 
