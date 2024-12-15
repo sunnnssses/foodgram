@@ -1,32 +1,27 @@
-from django.db.models import Sum, Window, F
-from django.db.models.functions import DenseRank
-from django.http import FileResponse
-from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404, redirect
 from django_filters.rest_framework import DjangoFilterBackend
-from django_short_url.views import get_surl
 from djoser.views import UserViewSet
-
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 from rest_framework.validators import ValidationError
 
 from recipes.models import (
-    FavoriteRecipe, Ingredient,
+    FavoriteRecipe, Follow, Ingredient,
     Recipe, RecipeIngredients,
-    Tag, ShoppingCartRecipe
-)
-from users.models import (
-    Follow, User
+    ShortUrl, Tag, ShoppingCartRecipe, User
 )
 
 from .filters import IngredientsFilter, RecipesFilter
 from .serializers import (
-    AvatarSerializer, CreateRecipeSerializer,
-    FavoriteSerializer, FollowingSerializer,
+    AvatarSerializer, RecipeSerializer,
+    FollowingSerializer,
     FoodgramUserSerializer, IngredientSerializer,
-    RecipeSerializer, TagSerializer,
+    GetRecipeSerializer, TagSerializer,
 )
 from .pagintation import Pagination
 from .utils import get_shopping_list
@@ -52,15 +47,15 @@ class RecipesViewSet(viewsets.ModelViewSet):
     """Вьюсет рецетов."""
 
     queryset = Recipe.objects.all()
-    serializer_class = RecipeSerializer
+    serializer_class = GetRecipeSerializer
     pagination_class = Pagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipesFilter
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
-            return RecipeSerializer
-        return CreateRecipeSerializer
+            return GetRecipeSerializer
+        return RecipeSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -75,8 +70,8 @@ class RecipesViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = self.request.user
         if request.method == 'POST':
-            return self.add_recipe(FavoriteRecipe, recipe, user)
-        return self.delete_recipe(FavoriteRecipe, recipe, user)
+            return self.highlight_recipe(FavoriteRecipe, recipe, user)
+        return self.unhighlight_recipe(FavoriteRecipe, recipe, user)
 
     @action(
         methods=['get'],
@@ -84,16 +79,15 @@ class RecipesViewSet(viewsets.ModelViewSet):
         url_path='get-link',
     )
     def get_link(self, request, pk=None):
-        get_object_or_404(Recipe, pk=pk)
+        if not Recipe.objects.filter(pk=pk).exists():
+            raise Http404("Страница не найдена.")
+        url, _ = ShortUrl.objects.get_or_create(
+            full_url=request.build_absolute_uri(
+                f'/recipes/{pk}/'
+            ))
         return Response({
             'short-link':
-            request.build_absolute_uri(
-                get_surl(
-                    request.build_absolute_uri(
-                        f'/recipes/{pk}/'
-                    )
-                )
-            )
+            reverse('api:short_url', args=[url.short_url], request=request)
         }, status=status.HTTP_200_OK)
 
     @action(
@@ -106,23 +100,14 @@ class RecipesViewSet(viewsets.ModelViewSet):
         return FileResponse(
             get_shopping_list(
                 RecipeIngredients.objects.filter(
-                    recipe__in_shopping_cart__user=self.request.user
+                    recipe__recipes_in_shopping_cart__user=self.request.user
                 ).values(
                     'ingredient__name',
-                    'ingredient__measurement_unit',
-                    'overall_amount',
-                    overall_amount=Window(
-                        expression=Sum('amount'),
-                        partition_by=[F('ingredient__name')]
-                    ),
-                    index=Window(
-                        expression=DenseRank(),
-                        order_by='ingredient__name'
-                    )
-                ).order_by('ingredient__name').distinct(),
+                    'ingredient__measurement_unit'
+                ).annotate(sum=Sum('amount')),
                 Recipe.objects.filter(
-                    in_shopping_cart__user=self.request.user
-                ).values_list('name', flat=True)
+                    recipes_in_shopping_cart__user=self.request.user
+                )
             ),
             content_type='text/plain'
         )
@@ -136,22 +121,21 @@ class RecipesViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = self.request.user
         if request.method == 'POST':
-            return self.add_recipe(ShoppingCartRecipe, recipe, user)
-        return self.delete_recipe(ShoppingCartRecipe, recipe, user)
+            return self.highlight_recipe(ShoppingCartRecipe, recipe, user)
+        return self.unhighlight_recipe(ShoppingCartRecipe, recipe, user)
 
-    def add_recipe(self, model, recipe, user):
-        if model.objects.filter(
-            recipe=recipe, user=user
-        ).exists():
+    def highlight_recipe(self, model, recipe, user):
+        _, created = model.objects.get_or_create(recipe=recipe, user=user)
+        if not created:
             raise ValidationError(
-                f'Рецепт {recipe.name} уже добавлен в избранное.'
+                f'Рецепт {recipe.name} уже добавлен.'
             )
-        model.objects.create(recipe=recipe, user=user)
         return Response(
-            FavoriteSerializer(recipe).data, status=status.HTTP_201_CREATED
+            GetRecipeSerializer(recipe, short=True).data,
+            status=status.HTTP_201_CREATED
         )
 
-    def delete_recipe(self, model, recipe, user):
+    def unhighlight_recipe(self, model, recipe, user):
         get_object_or_404(model, recipe=recipe, user=user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -239,3 +223,9 @@ class FoodgramUserViewSet(UserViewSet):
             ).data,
             status=status.HTTP_201_CREATED
         )
+
+
+def short_url_redirection(request, short_url):
+    """Функция для перенаправления по короткой ссылке."""
+    url = get_object_or_404(ShortUrl, short_url=short_url)
+    return redirect(url.full_url)

@@ -12,6 +12,7 @@ router.register('recipes', views.RecipesViewSet, basename='recipe')
 router.register('users', views.FoodgramUserViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('auth/', include('djoser.urls.authtoken')),
+    path('api/auth/', include('djoser.urls.authtoken')),
+    path('api/', include(router.urls)),
+    path('s/<str:short_url>', views.short_url_redirection, name='short_url')
 ]

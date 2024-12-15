@@ -1,6 +1,6 @@
-from api.serializers import IngredientSerializer
 from recipes.management.commands._uploader import UploaderBase
+from recipes.models import Ingredient
 
 
 class Command(UploaderBase):
-    serializer_class = IngredientSerializer
+    model = Ingredient

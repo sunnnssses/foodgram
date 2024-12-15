@@ -6,6 +6,8 @@ Foodgram — это сервис, с помощью которого вы мож
 ## Стек
 - Python
 - Django
+- Django REST framework
+- Djoser
 - Nginx
 - Docker
 - Postgres
@@ -43,17 +45,17 @@ sudo docker compose -f docker-compose.production.yml exec backend python manage.
 ```
 git clone https://github.com/sunnnssses/foodgram.git
 ```
-
-Создать базу данных
 ```
-psql -U postgres
-CREATE USER foodgram_user WITH ENCRYPTED PASSWORD 'foodgram_password';
-CREATE DATABASE foodgram WITH OWNER foodgram_user;
-GRANT ALL PRIVILEGES ON DATABASE foodgram TO foodgram_user;
+cd foodgram
+```
+Применить миграции
+```
+cd backend/
+python manage.py migrate
 ```
 Загрузить список ингридиентов и тегов в базу данных
 ```
-cd foodgram/backend/
+cd backend/
 python manage.py upload_ingredients "data/ingredients.json"
 python manage.py upload_tags "data/tags.json"
 ```
@@ -70,16 +72,15 @@ npm run start
 
 ## Заполнение .env
 Для работы проекта необходимо создать и заполнить файл .env следующими переменными окружения:
+- ENGINE_DB='django.db.backends.postgresql_psycopg2'
 - POSTGRES_DB=foodgram
 - POSTGRES_USER=foodgram_user
 - POSTGRES_PASSWORD=foodgram_password
 - DB_HOST=db (либо DB_HOST=localhost)
 - DB_PORT=5432
-- SECRET_KEY = 'secret_key'
-- ALLOWED_HOSTS = '00.123.45.678,127.0.0.1,localhost'
-- CSRF_TRUSTED_ORIGINS = 'https://*.ddns.net'
-- DEBUG = False
+- SECRET_KEY='secret_key'
+- ALLOWED_HOSTS='00.123.45.678,127.0.0.1,localhost'
+- CSRF_TRUSTED_ORIGINS='https://*.ddns.net'
+- DEBUG=False
 
-##### Автор: Щеткина Елизавета 
-
-[sunnnssses](https://github.com/sunnnssses)
+##### Автор:  [Щеткина Елизавета](https://github.com/sunnnssses)

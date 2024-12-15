@@ -10,9 +10,7 @@ class UploaderBase(BaseCommand):
 
     def handle(self, *args, **options):
         with open(options['path'], 'r', encoding='utf-8') as f:
-            data = self.serializer_class(
-                data=json.load(f),
-                many=True
+            self.model.objects.bulk_create(
+                [self.model(**data) for data in json.load(f)],
+                ignore_conflicts=True
             )
-            data.is_valid(raise_exception=True)
-            data.save()

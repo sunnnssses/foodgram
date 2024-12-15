@@ -2,14 +2,12 @@ from djoser.serializers import UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
+from foodgram.constants import PAGE_SIZE, MIN_COOKING_TIME, MIN_AMOUNT
 from recipes.models import (
-    FavoriteRecipe, Ingredient,
+    FavoriteRecipe, Follow, Ingredient,
     Recipe, RecipeIngredients,
-    Tag, ShoppingCartRecipe
+    Tag, ShoppingCartRecipe, User
 )
-from users.models import User, Follow
-
-from .constants import RECIPIES_LIMIT_DEFAULT
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -29,24 +27,19 @@ class FoodgramUserSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
+        fields = UserSerializer.Meta.fields + (
             'is_subscribed',
             'avatar'
         )
 
     def get_is_subscribed(self, user):
-        if 'request' in self.context and (
+        return 'request' in self.context and (
             self.context['request'].user.is_authenticated
-        ):
-            return Follow.objects.filter(
+        ) and (
+            Follow.objects.filter(
                 user=self.context['request'].user, author=user
             ).exists()
-        return False
+        )
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -79,21 +72,21 @@ class IngredientForRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
-class RecipeSerializer(serializers.ModelSerializer):
+class GetRecipeSerializer(serializers.ModelSerializer):
     """Сериалайзер рецептов."""
 
     author = FoodgramUserSerializer()
     ingredients = IngredientForRecipeSerializer(
         many=True, source='recipe_ingredients'
     )
-    image = Base64ImageField()
     tags = TagSerializer(many=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
-        fields = (
+        exclude = ('pub_date', )
+        read_only_fields = (
             'id',
             'tags',
             'author',
@@ -105,6 +98,14 @@ class RecipeSerializer(serializers.ModelSerializer):
             'text',
             'cooking_time',
         )
+
+    def __init__(self, *args, **kwargs):
+        is_short = kwargs.pop('short', False)
+        super().__init__(*args, **kwargs)
+        if is_short:
+            short_fields = set(['id', 'name', 'image', 'cooking_time'])
+            for field in set(self.fields) - short_fields:
+                self.fields.pop(field)
 
     def check_recipe(self, recipe, recipe_model):
         if 'request' in self.context and (
@@ -126,14 +127,14 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
     """Сериалайзер ингредиента для рецепта."""
 
     id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
-    amount = serializers.FloatField()
+    amount = serializers.IntegerField(min_value=MIN_AMOUNT)
 
     class Meta:
         model = RecipeIngredients
         fields = ('id', 'amount')
 
 
-class CreateRecipeSerializer(serializers.ModelSerializer):
+class RecipeSerializer(serializers.ModelSerializer):
     """Сериалайзер для создания рецептов."""
 
     ingredients = RecipeIngredientSerializer(
@@ -143,6 +144,9 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
         many=True, queryset=Tag.objects.all()
     )
     image = Base64ImageField()
+    cooking_time = serializers.IntegerField(
+        min_value=MIN_COOKING_TIME
+    )
 
     class Meta:
         model = Recipe
@@ -155,21 +159,23 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
+    @staticmethod
+    def set_ingredients(recipe, recipe_ingredients):
+        RecipeIngredients.objects.bulk_create(
+            [RecipeIngredients(
+                recipe=recipe,
+                ingredient=recipe_ingredient['id'],
+                amount=recipe_ingredient['amount']
+            ) for recipe_ingredient in recipe_ingredients]
+        )
+
     def create(self, validated_data):
         recipe_ingredients = validated_data.pop('recipe_ingredients')
         tags = validated_data.pop('tags')
-        recipe = Recipe.objects.create(**validated_data)
+        recipe = super().create(validated_data)
         recipe.tags.set(tags)
         recipe.save()
-
-        for recipe_ingredient in recipe_ingredients:
-            ingredient = recipe_ingredient['id']
-            amount = recipe_ingredient['amount']
-            RecipeIngredients.objects.create(
-                recipe=recipe,
-                ingredient=ingredient,
-                amount=amount
-            )
+        self.set_ingredients(recipe, recipe_ingredients)
         return recipe
 
     def update(self, instance, validated_data):
@@ -178,29 +184,11 @@ class CreateRecipeSerializer(serializers.ModelSerializer):
         instance.tags.clear()
         instance.tags.set(tags)
         instance.ingredients.clear()
-
-        for recipe_ingredient in recipe_ingredients:
-            ingredient = recipe_ingredient['id']
-            amount = recipe_ingredient['amount']
-            RecipeIngredients.objects.create(
-                recipe=instance,
-                ingredient=ingredient,
-                amount=amount
-            )
+        self.set_ingredients(instance, recipe_ingredients)
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
-        return RecipeSerializer(instance, context=self.context).data
-
-
-class FavoriteSerializer(serializers.ModelSerializer):
-    """Сериалайзер для добавления в избранное."""
-
-    image = Base64ImageField()
-
-    class Meta:
-        model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
+        return GetRecipeSerializer(instance, context=self.context).data
 
 
 class FollowingSerializer(FoodgramUserSerializer):
@@ -211,28 +199,21 @@ class FollowingSerializer(FoodgramUserSerializer):
 
     class Meta:
         model = User
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
+        fields = FoodgramUserSerializer.Meta.fields + (
             'recipes',
-            'recipes_count',
-            'avatar'
+            'recipes_count'
         )
 
     def get_recipes(self, user):
-        recipies_limit = self.context['request'].GET.get(
-            'recipes_limit', default=''
-        )
+        try:
+            recipies_limit = int(self.context['request'].GET.get(
+                'recipes_limit', default=PAGE_SIZE
+            ))
+        except (TypeError, ValueError):
+            recipies_limit = PAGE_SIZE
 
-        recipies_limit = (
-            int(recipies_limit) if recipies_limit.isdecimal()
-            else RECIPIES_LIMIT_DEFAULT
-        )
-        return FavoriteSerializer(
+        return GetRecipeSerializer(
             user.recipes.all()[:recipies_limit],
-            many=True
+            many=True,
+            short=True
         ).data

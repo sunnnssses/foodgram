@@ -1,6 +1,6 @@
-from api.serializers import TagSerializer
 from recipes.management.commands._uploader import UploaderBase
+from recipes.models import Tag
 
 
 class Command(UploaderBase):
-    serializer_class = TagSerializer
+    model = Tag

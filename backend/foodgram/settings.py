@@ -1,9 +1,9 @@
 """Django settings for foodgram project."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
-from pathlib import Path
 
 load_dotenv()
 
@@ -28,10 +28,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'djoser',
-    'django_short_url',
     'corsheaders',
+    'api.apps.ApiConfig',
     'recipes.apps.RecipesConfig',
-    'users.apps.UsersConfig',
 ]
 
 MIDDLEWARE = [
@@ -69,7 +68,7 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': os.getenv('ENGINE_DB', 'django.db.backends.postgresql_psycopg2'),
         'NAME': os.getenv('POSTGRES_DB', 'django'),
         'USER': os.getenv('POSTGRES_USER', 'django'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
@@ -120,7 +119,7 @@ REST_FRAMEWORK = {
 
 }
 
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = 'recipes.User'
 
 CORS_URLS_REGEX = r'^/api/.*$'
 
@@ -130,5 +129,3 @@ CORS_ALLOWED_ORIGINS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/'
-
-DJANGO_SHORT_URL_LENGTH = 3
