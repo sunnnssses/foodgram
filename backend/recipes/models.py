@@ -44,9 +44,6 @@ class User(AbstractUser):
         verbose_name_plural = 'Пользователи'
 
 
-User = get_user_model()
-
-
 class Tag(models.Model):
     """Модель тегов."""
 
