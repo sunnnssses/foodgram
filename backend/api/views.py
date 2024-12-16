@@ -223,5 +223,3 @@ class FoodgramUserViewSet(UserViewSet):
             ).data,
             status=status.HTTP_201_CREATED
         )
-
-

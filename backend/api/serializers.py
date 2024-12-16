@@ -2,7 +2,6 @@ from djoser.serializers import UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
-from .constants import PAGE_SIZE
 from recipes.constants import MIN_COOKING_TIME, MIN_AMOUNT
 from recipes.models import (
     Favorite, Follow, Ingredient,
