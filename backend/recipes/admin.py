@@ -3,8 +3,8 @@ from django.contrib.auth.admin import UserAdmin
 from django.db.models.aggregates import Count
 from django.utils.safestring import mark_safe
 
-from .models import (FavoriteRecipe, Follow, Ingredient,
-                     Recipe, RecipeIngredients, Tag, ShortUrl, User)
+from .models import (Favorite, Follow, Ingredient,
+                     Recipe, RecipeIngredients, Tag, User)
 
 
 @admin.register(Tag)
@@ -13,7 +13,7 @@ class TagAdmin(admin.ModelAdmin):
     search_fields = ('name', 'slug')
     search_help_text = 'Поиск по названию и слагу'
 
-    @admin.display(description='Число рецептов')
+    @admin.display(description='Рецептов')
     def recipes_count(self, tag):
         return tag.recipes.count()
 
@@ -23,17 +23,21 @@ class RecipeIngredientsAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(FavoriteRecipe)
+@admin.register(Favorite)
 class FavouriteAdmin(admin.ModelAdmin):
     pass
 
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('name', 'measurement_unit')
+    list_display = ('name', 'measurement_unit', 'recipes_count')
     search_fields = ('name', 'measurement_unit')
     search_help_text = 'Поиск по названию и ед. измерения'
     list_filter = ('measurement_unit',)
+
+    @admin.display(description='Рецептов')
+    def recipes_count(self, ingredient):
+        return ingredient.recipes.count()
 
 
 class IngredientsInLine(admin.TabularInline):
@@ -54,39 +58,42 @@ class RecipeAdmin(admin.ModelAdmin):
     filter_horizontal = ('tags',)
     inlines = [IngredientsInLine]
     list_filter = ('tags', 'author__username')
-    image_style = 'height:70px;'
 
     @admin.display(description='Избранное')
     def in_favorites(self, recipe):
-        return recipe.favorite_recipes.count()
+        return recipe.favorites.count()
 
     @mark_safe
     @admin.display(description='Картинка')
     def recipe_img(self, recipe):
         img_src = recipe.image.url if recipe.image else ''
-        return f'<img src="{img_src}" style="{self.image_style}"/>'
+        return f'<img src="{img_src}" style="height:70px;"/>'
 
     def recipe_get_list(self, field):
         return (
-            '<lu>' + "".join(
-                [f'<li>{entry.name}</li>' for entry in field.all()]
-            ) + '</lu>'
+            "<br>".join(
+                [f'{entry.name}' for entry in field.all()]
+            )
         )
 
     @mark_safe
     @admin.display(description='Теги')
     def recipe_tags(self, recipe):
-        return self.recipe_get_list(recipe.tags)
+        return (
+            "<br>".join(
+                f'{tag.name}' for tag in recipe.tags.all()
+            )
+        )
 
     @mark_safe
     @admin.display(description='Продукты')
     def recipe_ingredients(self, recipe):
-        return self.recipe_get_list(recipe.ingredients)
-
-
-@admin.register(ShortUrl)
-class ShortUrlAdmin(admin.ModelAdmin):
-    pass
+        return (
+            "<br>".join(
+                f'{ingredient.name}, {ingredient.measurement_unit}'
+                for ingredient in recipe.ingredients.all()
+            )
+        )
 
 
 @admin.register(Follow)
@@ -96,14 +103,15 @@ class FollowAdmin(admin.ModelAdmin):
 
 
 class UserFilter(admin.SimpleListFilter):
-    options = [('1', 'да'),
+    OPTIONS = [('1', 'да'),
                ('0', 'нет')]
+    OPTION_KEYS = dict(OPTIONS).keys()
 
     def lookups(self, request, model_admin):
-        return self.options
+        return self.OPTIONS
 
     def queryset(self, request, queryset):
-        if self.value() not in dict(self.options):
+        if self.value() not in self.OPTION_KEYS:
             return queryset
         filter_expr = {'count__gt': 0} if self.value() == '1' else {'count': 0}
         return queryset.annotate(
@@ -140,9 +148,8 @@ class FoodgramUserAdmin(UserAdmin):
     list_filter = UserAdmin.list_filter + (
         HasRecipesFilter, HasFollowersFilter, HasFollowsFilter
     )
-    avatar_style = 'height:70px;'
 
-    @admin.display(description='Имя')
+    @admin.display(description='ФИО пользователя')
     def full_name(self, user):
         return user.get_full_name()
 
@@ -150,7 +157,7 @@ class FoodgramUserAdmin(UserAdmin):
     @admin.display(description='Аватар')
     def avatar_img(self, user):
         img_src = user.avatar.url if user.avatar else ''
-        return f'<img src="{img_src}" style="{self.avatar_style}">'
+        return f'<img src="{img_src}" style="height:70px;">'
 
     @admin.display(description='Подписчиков')
     def followers(self, user):
@@ -160,6 +167,6 @@ class FoodgramUserAdmin(UserAdmin):
     def users_following(self, user):
         return user.followers.count()
 
-    @admin.display(description='Опубликованных рецептов')
+    @admin.display(description='Рецептов')
     def recipes(self, user):
         return user.recipes.count()

@@ -16,8 +16,6 @@ Foodgram — это сервис, с помощью которого вы мож
 Клонировать репозиторий и перейти в него в командной строке:
 ```
 git clone https://github.com/sunnnssses/foodgram.git
-```
-```
 cd foodgram
 ```
 Выполнить запуск командой
@@ -44,8 +42,6 @@ sudo docker compose -f docker-compose.production.yml exec backend python manage.
 Клонировать репозиторий и перейти в него в командной строке:
 ```
 git clone https://github.com/sunnnssses/foodgram.git
-```
-```
 cd foodgram
 ```
 Применить миграции
@@ -55,9 +51,8 @@ python manage.py migrate
 ```
 Загрузить список ингридиентов и тегов в базу данных
 ```
-cd backend/
-python manage.py upload_ingredients "data/ingredients.json"
-python manage.py upload_tags "data/tags.json"
+python manage.py upload_ingredients data/ingredients.json
+python manage.py upload_tags data/tags.json
 ```
 Запустить бэкенд
 ```

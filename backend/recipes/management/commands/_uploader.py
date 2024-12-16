@@ -9,8 +9,14 @@ class UploaderBase(BaseCommand):
         parser.add_argument('path')
 
     def handle(self, *args, **options):
-        with open(options['path'], 'r', encoding='utf-8') as f:
+        try:
+            f = open(options['path'], 'r', encoding='utf-8')
+        except OSError:
+            self.stdout.write(f'Невозможно открыть файл {options["path"]}',
+                              ending='\n')
+            return
+        with f:
             self.model.objects.bulk_create(
-                [self.model(**data) for data in json.load(f)],
+                (self.model(**data) for data in json.load(f)),
                 ignore_conflicts=True
             )

@@ -4,10 +4,10 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
-from foodgram.constants import (
-    CHARACTERS, EMAIL_LENGTH, INGREDIENT_LENGTH,
+from .constants import (
+    EMAIL_LENGTH, INGREDIENT_LENGTH,
     MIN_AMOUNT, MIN_COOKING_TIME, RECIPE_LENGTH,
-    SHORT_URL_LENGTH, SLUG_REGEX, TAG_LENGTH,
+    TAG_LENGTH,
     UNIT_LENGTH, USERNAME_LENGTH, USERNAME_REGEX
 )
 
@@ -19,13 +19,20 @@ class User(AbstractUser):
         max_length=USERNAME_LENGTH,
         unique=True,
         validators=[RegexValidator(regex=USERNAME_REGEX)],
+        verbose_name='Имя пользователя'
     )
-    first_name = models.CharField(max_length=USERNAME_LENGTH)
-    last_name = models.CharField(max_length=USERNAME_LENGTH)
+    first_name = models.CharField(
+        max_length=USERNAME_LENGTH,
+        verbose_name='Имя'
+    )
+    last_name = models.CharField(
+        max_length=USERNAME_LENGTH,
+        verbose_name='Фамилия'
+    )
     email = models.EmailField(
         unique=True,
         max_length=EMAIL_LENGTH,
-        verbose_name='email'
+        verbose_name='Электронная почта'
     )
     avatar = models.ImageField(
         upload_to='avatars/',
@@ -38,7 +45,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'username']
 
     class Meta:
-        ordering = ['username']
+        ordering = ('username',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -46,12 +53,15 @@ class User(AbstractUser):
 class Tag(models.Model):
     """Модель тегов."""
 
-    name = models.CharField(max_length=TAG_LENGTH, verbose_name='Название')
+    name = models.CharField(
+        max_length=TAG_LENGTH,
+        unique=True,
+        verbose_name='Название'
+    )
     slug = models.SlugField(
         max_length=TAG_LENGTH,
         unique=True,
-        verbose_name='Слаг',
-        validators=[RegexValidator(regex=SLUG_REGEX)]
+        verbose_name='Слаг'
     )
 
     class Meta:
@@ -98,7 +108,7 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        verbose_name='Автор рецепта',
+        verbose_name='Автор'
     )
     name = models.CharField(max_length=RECIPE_LENGTH, verbose_name='Название')
     image = models.ImageField('Картинка', upload_to='recipes_images')
@@ -106,11 +116,11 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient,
         through='RecipeIngredients',
-        verbose_name='Ингредиенты'
+        verbose_name='Продукты'
     )
     tags = models.ManyToManyField(Tag, verbose_name='Теги')
     cooking_time = models.PositiveIntegerField(
-        verbose_name='Время приготовления',
+        verbose_name='Время приготовления, мин',
         validators=[MinValueValidator(MIN_COOKING_TIME)]
     )
 
@@ -170,7 +180,7 @@ class BaseUserRecipeModel(models.Model):
     )
 
     class Meta:
-        default_related_name = 'highlihgted_recipes'
+        default_related_name = '%(class)ss'
         constraints = [
             models.UniqueConstraint(
                 fields=['recipe', 'user'],
@@ -183,56 +193,20 @@ class BaseUserRecipeModel(models.Model):
         return f'{self.user} добавил {self.recipe}'
 
 
-class FavoriteRecipe(BaseUserRecipeModel):
+class Favorite(BaseUserRecipeModel):
     """Модель избранного."""
 
     class Meta(BaseUserRecipeModel.Meta):
-        default_related_name = 'favorite_recipes'
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
 
 
-class ShoppingCartRecipe(BaseUserRecipeModel):
+class ShoppingCart(BaseUserRecipeModel):
     """Модель корзины."""
 
     class Meta(BaseUserRecipeModel.Meta):
-        default_related_name = 'recipes_in_shopping_cart'
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-
-
-class ShortUrl(models.Model):
-    """Модель для коротких ссылок."""
-
-    full_url = models.URLField(unique=True)
-    short_url = models.CharField(
-        max_length=20,
-        unique=True,
-        db_index=True,
-        blank=True
-    )
-    created_date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ('-created_date',)
-
-    def save(self, *args, **kwargs):
-        if not self.short_url:
-            while True:
-                self.short_url = ''.join(
-                    random.choices(
-                        CHARACTERS,
-                        k=SHORT_URL_LENGTH
-                    )
-                )
-                if not ShortUrl.objects.filter(
-                    short_url=self.short_url
-                ).exists():
-                    break
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f'{self.short_url} -> {self.full_url}'
 
 
 class Follow(models.Model):

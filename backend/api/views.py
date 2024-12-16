@@ -1,6 +1,6 @@
 from django.db.models import Sum
 from django.http import FileResponse, Http404
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
 from rest_framework import status, viewsets
@@ -11,17 +11,17 @@ from rest_framework.reverse import reverse
 from rest_framework.validators import ValidationError
 
 from recipes.models import (
-    FavoriteRecipe, Follow, Ingredient,
+    Favorite, Follow, Ingredient,
     Recipe, RecipeIngredients,
-    ShortUrl, Tag, ShoppingCartRecipe, User
+    Tag, ShoppingCart, User
 )
 
 from .filters import IngredientsFilter, RecipesFilter
 from .serializers import (
-    AvatarSerializer, RecipeSerializer,
-    FollowingSerializer,
-    FoodgramUserSerializer, IngredientSerializer,
-    GetRecipeSerializer, TagSerializer,
+    AvatarSerializer, FollowingSerializer,
+    FoodgramUserSerializer, GetRecipeSerializer,
+    IngredientSerializer, RecipeSerializer,
+    ShortRecipeSerializer, TagSerializer
 )
 from .pagintation import Pagination
 from .utils import get_shopping_list
@@ -70,8 +70,10 @@ class RecipesViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = self.request.user
         if request.method == 'POST':
-            return self.highlight_recipe(FavoriteRecipe, recipe, user)
-        return self.unhighlight_recipe(FavoriteRecipe, recipe, user)
+            return self.highlight_recipe(
+                Favorite, recipe, user, 'избранное'
+            )
+        return self.unhighlight_recipe(Favorite, recipe, user)
 
     @action(
         methods=['get'],
@@ -80,14 +82,10 @@ class RecipesViewSet(viewsets.ModelViewSet):
     )
     def get_link(self, request, pk=None):
         if not Recipe.objects.filter(pk=pk).exists():
-            raise Http404("Страница не найдена.")
-        url, _ = ShortUrl.objects.get_or_create(
-            full_url=request.build_absolute_uri(
-                f'/recipes/{pk}/'
-            ))
+            raise Http404("Рецепт не найден.")
         return Response({
             'short-link':
-            reverse('api:short_url', args=[url.short_url], request=request)
+            request.build_absolute_uri(reverse('recipes:short_url', args=[pk]))
         }, status=status.HTTP_200_OK)
 
     @action(
@@ -104,7 +102,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
                 ).values(
                     'ingredient__name',
                     'ingredient__measurement_unit'
-                ).annotate(sum=Sum('amount')),
+                ).annotate(sum=Sum('amount')).order_by('ingredient__name'),
                 Recipe.objects.filter(
                     recipes_in_shopping_cart__user=self.request.user
                 )
@@ -121,17 +119,19 @@ class RecipesViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = self.request.user
         if request.method == 'POST':
-            return self.highlight_recipe(ShoppingCartRecipe, recipe, user)
-        return self.unhighlight_recipe(ShoppingCartRecipe, recipe, user)
+            return self.highlight_recipe(
+                ShoppingCart, recipe, user, 'покупки'
+            )
+        return self.unhighlight_recipe(ShoppingCart, recipe, user)
 
-    def highlight_recipe(self, model, recipe, user):
+    def highlight_recipe(self, model, recipe, user, destination):
         _, created = model.objects.get_or_create(recipe=recipe, user=user)
         if not created:
             raise ValidationError(
-                f'Рецепт {recipe.name} уже добавлен.'
+                f'Рецепт {recipe.name} уже добавлен в {destination}.'
             )
         return Response(
-            GetRecipeSerializer(recipe, short=True).data,
+            ShortRecipeSerializer(recipe).data,
             status=status.HTTP_201_CREATED
         )
 
@@ -225,7 +225,3 @@ class FoodgramUserViewSet(UserViewSet):
         )
 
 
-def short_url_redirection(request, short_url):
-    """Функция для перенаправления по короткой ссылке."""
-    url = get_object_or_404(ShortUrl, short_url=short_url)
-    return redirect(url.full_url)
