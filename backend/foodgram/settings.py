@@ -128,7 +128,9 @@ AUTH_USER_MODEL = 'recipes.User'
 
 CORS_URLS_REGEX = r'^/api/.*$'
 
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/'
