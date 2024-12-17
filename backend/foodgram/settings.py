@@ -68,17 +68,6 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('ENGINE_DB', 'django.db.backends.postgresql_psycopg2'),
-        'NAME': os.getenv('POSTGRES_DB', 'django'),
-        'USER': os.getenv('POSTGRES_USER', 'django'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', 5432)
-    }
-}
-
-DATABASES = {
-    'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
@@ -139,9 +128,7 @@ AUTH_USER_MODEL = 'recipes.User'
 
 CORS_URLS_REGEX = r'^/api/.*$'
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/'
