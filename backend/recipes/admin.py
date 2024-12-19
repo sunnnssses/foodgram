@@ -1,21 +1,29 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Group
 from django.db.models.aggregates import Count
 from django.utils.safestring import mark_safe
 
-from .models import (Favorite, Follow, Ingredient,
-                     Recipe, RecipeIngredients, Tag, User)
+from .models import (
+    Favorite, Follow, Ingredient,
+    Recipe, RecipeIngredients, Tag, User
+)
+
+
+admin.site.unregister(Group)
+
+
+class HasRecipesMixin():
+    @admin.display(description='Рецептов')
+    def recipes_count(self, instance):
+        return instance.recipes.count()
 
 
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagAdmin(admin.ModelAdmin, HasRecipesMixin):
     list_display = ('name', 'slug', 'recipes_count')
     search_fields = ('name', 'slug')
     search_help_text = 'Поиск по названию и слагу'
-
-    @admin.display(description='Рецептов')
-    def recipes_count(self, tag):
-        return tag.recipes.count()
 
 
 @admin.register(RecipeIngredients)
@@ -29,15 +37,11 @@ class FavouriteAdmin(admin.ModelAdmin):
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(admin.ModelAdmin):
+class IngredientAdmin(admin.ModelAdmin, HasRecipesMixin):
     list_display = ('name', 'measurement_unit', 'recipes_count')
     search_fields = ('name', 'measurement_unit')
     search_help_text = 'Поиск по названию и ед. измерения'
     list_filter = ('measurement_unit',)
-
-    @admin.display(description='Рецептов')
-    def recipes_count(self, ingredient):
-        return ingredient.recipes.count()
 
 
 class IngredientsInLine(admin.TabularInline):
@@ -49,7 +53,7 @@ class IngredientsInLine(admin.TabularInline):
 class RecipeAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'name', 'cooking_time',
-        'author', 'recipe_tags', 'in_favorites',
+        'author_username', 'recipe_tags', 'in_favorites',
         'recipe_ingredients', 'recipe_img'
     )
     list_display_links = ('name',)
@@ -58,6 +62,10 @@ class RecipeAdmin(admin.ModelAdmin):
     filter_horizontal = ('tags',)
     inlines = [IngredientsInLine]
     list_filter = ('tags', 'author__username')
+
+    @admin.display(description='Автор')
+    def author_username(self, recipe):
+        return recipe.author.username
 
     @admin.display(description='Избранное')
     def in_favorites(self, recipe):
@@ -69,29 +77,24 @@ class RecipeAdmin(admin.ModelAdmin):
         img_src = recipe.image.url if recipe.image else ''
         return f'<img src="{img_src}" style="height:70px;"/>'
 
-    def recipe_get_list(self, field):
-        return (
-            "<br>".join(
-                [f'{entry.name}' for entry in field.all()]
-            )
-        )
-
     @mark_safe
     @admin.display(description='Теги')
     def recipe_tags(self, recipe):
-        return (
-            "<br>".join(
-                f'{tag.name}' for tag in recipe.tags.all()
-            )
+        return '<br>'.join(
+            f'{tag.name}' for tag in recipe.tags.all()
         )
 
     @mark_safe
     @admin.display(description='Продукты')
     def recipe_ingredients(self, recipe):
-        return (
-            "<br>".join(
-                f'{ingredient.name}, {ingredient.measurement_unit}'
-                for ingredient in recipe.ingredients.all()
+        return '<br>'.join(
+            '{} ({}), {}'.format(
+                recipe_ingredient.ingredient.name,
+                recipe_ingredient.ingredient.measurement_unit,
+                recipe_ingredient.amount
+            )
+            for recipe_ingredient in RecipeIngredients.objects.filter(
+                recipe=recipe
             )
         )
 
@@ -138,12 +141,19 @@ class HasFollowsFilter(UserFilter):
 
 
 @admin.register(User)
-class FoodgramUserAdmin(UserAdmin):
+class FoodgramUserAdmin(UserAdmin, HasRecipesMixin):
     search_fields = ('username', 'email')
     search_help_text = 'Поиск по автору и электронной почте'
     readonly_fields = ('followers', 'users_following', 'recipes')
-    fieldsets = UserAdmin.fieldsets + (('Stats', {'fields': readonly_fields}),)
-    list_display = ('avatar_img', 'username', 'email', 'full_name', 'is_staff')
+    fieldsets = (
+        *UserAdmin.fieldsets,
+        ('Аватар', {'fields': ('avatar',)}),
+        ('Статистика', {'fields': readonly_fields}),
+    )
+    list_display = (
+        'avatar_img', 'username', 'email',
+        'full_name', 'recipes_count', 'is_staff'
+    )
     list_display_links = ('username', 'email')
     list_filter = UserAdmin.list_filter + (
         HasRecipesFilter, HasFollowersFilter, HasFollowsFilter

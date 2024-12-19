@@ -100,14 +100,6 @@ class GetRecipeSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
-    def __init__(self, *args, **kwargs):
-        is_short = kwargs.pop('short', False)
-        super().__init__(*args, **kwargs)
-        if is_short:
-            short_fields = set(['id', 'name', 'image', 'cooking_time'])
-            for field in set(self.fields) - short_fields:
-                self.fields.pop(field)
-
     def check_recipe(self, recipe, recipe_model):
         return 'request' in self.context and (
             self.context['request'].user.is_authenticated
@@ -213,12 +205,13 @@ class FollowingSerializer(FoodgramUserSerializer):
         )
 
     def get_recipes(self, user):
+        recipies_limit = 10**10
         try:
             recipies_limit = int(self.context['request'].GET.get(
                 'recipes_limit', default=10**10
             ))
         except (TypeError, ValueError):
-            recipies_limit = 10**10
+            pass
 
         return ShortRecipeSerializer(
             user.recipes.all()[:recipies_limit],

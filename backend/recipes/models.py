@@ -17,7 +17,7 @@ class User(AbstractUser):
         max_length=USERNAME_LENGTH,
         unique=True,
         validators=[RegexValidator(regex=USERNAME_REGEX)],
-        verbose_name='Имя пользователя'
+        verbose_name='Ник'
     )
     first_name = models.CharField(
         max_length=USERNAME_LENGTH,
@@ -118,7 +118,7 @@ class Recipe(models.Model):
     )
     tags = models.ManyToManyField(Tag, verbose_name='Теги')
     cooking_time = models.PositiveIntegerField(
-        verbose_name='Время приготовления, мин',
+        verbose_name='Время(мин)',
         validators=[MinValueValidator(MIN_COOKING_TIME)]
     )
 
@@ -213,12 +213,14 @@ class Follow(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='followers'
+        related_name='followers',
+        verbose_name='Подписчик'
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='authors'
+        related_name='authors',
+        verbose_name='Автор'
     )
 
     class Meta:

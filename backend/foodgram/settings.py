@@ -97,6 +97,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+DJOSER = {
+    'SERIALIZERS': {
+        'current_user': 'api.serializers.FoodgramUserSerializer'
+    }
+}
+
 LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'Europe/Moscow'

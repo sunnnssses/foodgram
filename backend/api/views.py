@@ -67,13 +67,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
         url_path='favorite',
     )
     def favorite(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, pk=pk)
-        user = self.request.user
-        if request.method == 'POST':
-            return self.highlight_recipe(
-                Favorite, recipe, user, 'избранное'
-            )
-        return self.unhighlight_recipe(Favorite, recipe, user)
+        return self.highlight_recipe(request, Favorite, pk=pk)
 
     @action(
         methods=['get'],
@@ -82,7 +76,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
     )
     def get_link(self, request, pk=None):
         if not Recipe.objects.filter(pk=pk).exists():
-            raise Http404("Рецепт не найден.")
+            raise Http404(f'Рецепт с id {pk} не найден.')
         return Response({
             'short-link':
             request.build_absolute_uri(reverse('recipes:short_url', args=[pk]))
@@ -98,13 +92,13 @@ class RecipesViewSet(viewsets.ModelViewSet):
         return FileResponse(
             get_shopping_list(
                 RecipeIngredients.objects.filter(
-                    recipe__recipes_in_shopping_cart__user=self.request.user
+                    recipe__shoppingcarts__user=self.request.user
                 ).values(
                     'ingredient__name',
                     'ingredient__measurement_unit'
                 ).annotate(sum=Sum('amount')).order_by('ingredient__name'),
                 Recipe.objects.filter(
-                    recipes_in_shopping_cart__user=self.request.user
+                    shoppingcarts__user=self.request.user
                 )
             ),
             content_type='text/plain'
@@ -116,26 +110,23 @@ class RecipesViewSet(viewsets.ModelViewSet):
         url_path='shopping_cart',
     )
     def shopping_cart(self, request, pk=None):
+        return self.highlight_recipe(request, ShoppingCart, pk=pk)
+
+    def highlight_recipe(self, request, model, pk=None):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = self.request.user
         if request.method == 'POST':
-            return self.highlight_recipe(
-                ShoppingCart, recipe, user, 'покупки'
+            _, created = model.objects.get_or_create(recipe=recipe, user=user)
+            if not created:
+                raise ValidationError(
+                    'Рецепт {} уже добавлен в {}.'.format(
+                        recipe.name, model._meta.verbose_name.lower()
+                    )
+                )
+            return Response(
+                ShortRecipeSerializer(recipe).data,
+                status=status.HTTP_201_CREATED
             )
-        return self.unhighlight_recipe(ShoppingCart, recipe, user)
-
-    def highlight_recipe(self, model, recipe, user, destination):
-        _, created = model.objects.get_or_create(recipe=recipe, user=user)
-        if not created:
-            raise ValidationError(
-                f'Рецепт {recipe.name} уже добавлен в {destination}.'
-            )
-        return Response(
-            ShortRecipeSerializer(recipe).data,
-            status=status.HTTP_201_CREATED
-        )
-
-    def unhighlight_recipe(self, model, recipe, user):
         get_object_or_404(model, recipe=recipe, user=user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
