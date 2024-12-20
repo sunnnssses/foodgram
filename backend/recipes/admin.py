@@ -81,7 +81,7 @@ class RecipeAdmin(admin.ModelAdmin):
     @admin.display(description='Теги')
     def recipe_tags(self, recipe):
         return '<br>'.join(
-            f'{tag.name}' for tag in recipe.tags.all()
+            tag.name for tag in recipe.tags.all()
         )
 
     @mark_safe
@@ -93,9 +93,7 @@ class RecipeAdmin(admin.ModelAdmin):
                 recipe_ingredient.ingredient.measurement_unit,
                 recipe_ingredient.amount
             )
-            for recipe_ingredient in RecipeIngredients.objects.filter(
-                recipe=recipe
-            )
+            for recipe_ingredient in recipe.recipe_ingredients.all()
         )
 
 
